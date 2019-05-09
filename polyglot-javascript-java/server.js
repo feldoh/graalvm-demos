@@ -45,18 +45,20 @@ const app = express()
 const Label = Java.type('org.neo4j.graphdb.Label');
 const FileType = Java.type('java.io.File');
 const RelationshipType = Java.type('org.neo4j.graphdb.RelationshipType');
-const BatchInserter = Java.type('org.neo4j.unsafe.batchinsert.BatchInserter');
 const BatchInserters = Java.type('org.neo4j.unsafe.batchinsert.BatchInserters');
-const FastInserter = Java.type('com.dexterlowe.graal.FastInserter');
 const HashMap = Java.type('java.util.HashMap');
 const path = "/Users/dexterlowe/neo"
 
 app.get('/', function (req, res) {
-  var text = 'Hello World from Graal.js!<br> '
+  var text = 'Hello World from Graal.js!'
+  text += '<br>Neo4J Store Written To: ' + path
+  text += '<br>Add the following line to your Neo4J Config to see your Graph:'
+  text += '<br>dbms.directories.data=' + path
   res.send(text)
 })
 
 console.log('Importing')
+
 // Graph
 var file = new FileType(path + "/databases/graph.db")
 var inserter = BatchInserters.inserter(file);
@@ -69,37 +71,34 @@ var appLabel = Label.label("App")
 var createdWith = RelationshipType.withName("CREATED_WITH")
 
 //Enabling Index for a Label and Property
-// inserter.createDeferredSchemaIndex(app).on( "name" ).create();
+inserter.createDeferredConstraint(appLabel).assertPropertyIsUnique('name').create();
 
-var neoLoaderProps = new HashMap();
-neoLoaderProps.put("name", "NeoLoader");
-neoLoaderProps.put("date", '2019-05-09');
+// Props with JS
+const neoLoaderProps = {
+  name: 'NeoLoader',
+  date: '2019-05-09'
+};
 
+// Props with Java
 var drinkieProps = new HashMap();
 drinkieProps.put("name", "DrinkieMcDrinkface");
 drinkieProps.put("date", '2017-07-01');
 
-var javaProps = new HashMap();
-javaProps.put("name", "Java");
-
-var jsProps = new HashMap();
-jsProps.put("name", "JavaScript");
-
-//Creating Properties
+//Creating Nodes
 var neoLoader = inserter.createNode( neoLoaderProps, appLabel );
 var drinkie = inserter.createNode( drinkieProps, appLabel );
 
-var java = inserter.createNode( javaProps, langLabel );
-var js = inserter.createNode( jsProps, langLabel );
+var java = inserter.createNode( {name: 'Java'}, langLabel );
+var python = inserter.createNode( {name: 'Python'}, langLabel );
+var js = inserter.createNode( {name: 'JavaScript'}, langLabel );
 
-// To set properties on the relationship, use a properties map
-// instead of null as the last parameter.
-inserter.createRelationship(neoLoader, java, createdWith, null );
-inserter.createRelationship(neoLoader, js, createdWith, null );
-inserter.createRelationship(drinkie, java, createdWith, null );
+// Creating Rels
+inserter.createRelationship(neoLoader, java, createdWith, { addedBy: 'Graal Java 8' } );
+inserter.createRelationship(neoLoader, js, createdWith, { addedBy: 'Graal JS' } );
+inserter.createRelationship(drinkie, python, createdWith, { addedBy: 'Python 3.7' } );
 
 inserter.shutdown()
-console.log('Written')
+console.log('Written to ' + inserter.getStoreDir())
 app.listen(3000, function () {
   console.log('Example app listening on port 3000!')
 })
